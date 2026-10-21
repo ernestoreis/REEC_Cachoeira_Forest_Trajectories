@@ -1,8 +1,0 @@
-.Rhistory
-.RData
-.Ruserdata
-.Rproj.user/
-outputs/*
-!outputs/.gitkeep
-*.tmp
-~$*

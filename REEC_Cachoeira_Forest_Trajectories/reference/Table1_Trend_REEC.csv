@@ -1,5 +1,0 @@
-"Spatial unit","Period","n","beta (percentage points yr-1)","HAC p-value","Durbin-Watson","Mann-Kendall tau","Mann-Kendall p-value","Sen slope (percentage points yr-1)","R-squared"
-"Basin","1985-2022",38,-0.123,4.44e-19,0.381,-0.957,2.96e-17,-0.119,0.956
-"DOF","1985-2022",38,-0.207,1.74e-24,0.408,-0.935,1.62e-16,-0.206,0.97
-"SSF","1985-2022",38,-0.201,1.75e-14,0.166,-0.932,2e-16,-0.198,0.927
-"DSF","1985-2022",38,-0.018,0.000623,0.815,-0.505,8.57e-06,-0.019,0.496

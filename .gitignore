@@ -6,3 +6,6 @@ outputs/*
 !outputs/.gitkeep
 *.tmp
 ~$*
+
+/backup_scripts/
+/REEC_Cachoeira_Forest_Trajectories/
