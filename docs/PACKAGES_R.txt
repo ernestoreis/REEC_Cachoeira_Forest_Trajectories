@@ -1,0 +1,17 @@
+readxl
+dplyr
+tidyr
+purrr
+janitor
+lmtest
+sandwich
+Kendall
+trend
+ggplot2
+patchwork
+ggrepel
+openxlsx
+scales
+viridisLite
+grid
+stringr
