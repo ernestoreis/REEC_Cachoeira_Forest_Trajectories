@@ -1,13 +1,8 @@
-# R/RStudio interactive sessions
 .Rhistory
 .RData
-.Ruserdata/
+.Ruserdata
 .Rproj.user/
-# Generated images, tabular outputs, logs and session information
 outputs/*
 !outputs/.gitkeep
-# OS/editor temporary data
-.DS_Store
-Thumbs.db
-~$*
 *.tmp
+~$*
