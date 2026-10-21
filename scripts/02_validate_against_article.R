@@ -1,5 +1,6 @@
-# REEC article: compare generated numeric results with the archived manuscript tables.
-# Run AFTER scripts/01_reproduce_article.R, from the project root.
+# Confere os resultados numéricos calculados em outputs/ com reference/.
+# Requer a execução prévia de scripts/01_reproduce_article.R.
+
 repo_root <- getwd()
 if (!file.exists(file.path(repo_root, "reference", "Table1_Trend_REEC.csv"))) {
   if (file.exists(file.path(dirname(repo_root), "reference", "Table1_Trend_REEC.csv")))
@@ -20,7 +21,6 @@ compare <- function(expected, actual, col, tolerance = 5.01e-4, relative = FALSE
   if (!length(e) || !length(a) || length(e) != length(a) || anyNA(e) || anyNA(a))
     stop("Missing/incompatible values for: ", col)
   dif <- abs(e - a)
-  # Reference tables show 3 decimals (numeric trends) or 3 significant figures (p-values).
   limit <- if (relative) pmax(abs(e) * 0.012, 1e-30) else tolerance
   if (any(dif > limit)) {
     bad <- which(dif > limit)
@@ -53,7 +53,7 @@ for (f in figure_filenames) {
   if (!file.exists(p) || file.info(p)$size < 20000) stop("Figure absent or too small: ", p)
   cat("OK figure ", f, "\n", sep="")
 }
-cat("\nALL REEC NUMERIC VALIDATIONS PASSED.\n")
+cat("\nALL NUMERIC VALIDATIONS PASSED.\n")
 writeLines(c(paste("Validation date:", Sys.time()), capture.output(sessionInfo()),
-             "ALL REEC NUMERIC VALIDATIONS PASSED"),
+             "ALL NUMERIC VALIDATIONS PASSED"),
            file.path(repo_root,"outputs","validation_PASS.txt"))

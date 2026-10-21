@@ -1,39 +1,16 @@
-# ============================================================
-# Regional Environmental Change (Springer Nature)
-# Chapter 2 - publication-ready figures and tables
-# Period: 1985-2022
-#
-# REEC REPRODUCIBILITY RELEASE v6 (based on validated v5):
-# - Runs from repository root and uses four immutable data/raw XLSX inputs
-# - American English throughout the artwork
-# - Figure 5 finalized as a 2 x 2 PCA multipanel:
-#     (a) Cachoeira River basin
-#     (b) Dense Ombrophilous Forest (DOF)
-#     (c) Semideciduous Seasonal Forest (SSF)
-#     (d) Deciduous Seasonal Forest (DSF)
-# - Final editorial refinement after inspection of the v4 PDF outputs
-# - Plotmath notation avoids font/glyph problems in beta, R-squared, and yr^-1
-# - DSF 1985-1986 annual-change audit printed in the console
-# - High-resolution TIFF + vector PDF/EPS
-# - Figure captions are NOT embedded in the artwork
-#
-# Springer Nature-oriented artwork settings:
-# - final width: 174 mm (double-column)
-# - lettering: 8-12 pt at final size
-# - vector PDF/EPS preferred for plots
-# - TIFF: 600 dpi for color/combination artwork
-# - lowercase panel labels
-# - color-blind-friendly viridis time scale
-# - visual information remains interpretable without relying only on color
-# ============================================================
+# Série temporal de cobertura florestal e PCA — Bacia do Rio Cachoeira (1985–2022)
+# Entradas: data/raw/*.xlsx (percentuais anuais por classe e unidade espacial)
+# Análises: OLS, Newey-West HAC, Durbin–Watson, Mann–Kendall, Sen, PCA
+# Saídas: outputs/ (tabelas numéricas, loadings, Figuras 3–5, registros da sessão)
+# A coluna "NA" dos XLSX é uma categoria residual, não um valor ausente.
+# Ela permanece na PCA quando sua variância é maior que zero, como na análise original.
 
+
+
+## Iniciar análise
 rm(list = ls())
 
-# ------------------------------------------------------------
-# 0. Working directory
-# ------------------------------------------------------------
-# Run from the repository root (open the .Rproj in RStudio), or
-# from scripts/ or a direct child of the project. No absolute path is needed.
+## Caminhos de trabalho
 find_repo_root <- function() {
   candidates <- unique(c(getwd(), dirname(getwd()), dirname(dirname(getwd()))))
   hits <- candidates[file.exists(file.path(candidates, "data", "raw", "Bacia_percentual.xlsx"))]
@@ -44,9 +21,7 @@ find_repo_root <- function() {
 }
 repo_root <- find_repo_root()
 
-# ------------------------------------------------------------
-# 1. Packages
-# ------------------------------------------------------------
+## Dependências
 pkgs <- c(
   "readxl", "dplyr", "tidyr", "purrr", "janitor",
   "lmtest", "sandwich", "Kendall", "trend",
@@ -58,9 +33,7 @@ to_install <- pkgs[!pkgs %in% rownames(installed.packages())]
 if (length(to_install)) install.packages(to_install, dependencies = TRUE)
 invisible(lapply(pkgs, require, character.only = TRUE))
 
-# ------------------------------------------------------------
-# 2. Fixed, versioned input paths (no searching by modified date)
-# ------------------------------------------------------------
+## Dados de entrada
 input_dir <- file.path(repo_root, "data", "raw")
 arq_bacia <- file.path(input_dir, "Bacia_percentual.xlsx")
 arq_fod   <- file.path(input_dir, "fod_percentual.xlsx")
@@ -74,9 +47,7 @@ for (p in c(arq_bacia, arq_fod, arq_fes, arq_fed)) {
 dir_out <- file.path(repo_root, "outputs")
 dir.create(dir_out, recursive = TRUE, showWarnings = FALSE)
 
-# ------------------------------------------------------------
-# 3. Reading helpers
-# ------------------------------------------------------------
+## Leitura e padronização
 detect_year_col <- function(nms) {
   cand <- nms[grepl("^ano$|ano_|_ano$|year|^t$|^time$", nms)]
   if (length(cand) == 0) NA_character_ else cand[1]
@@ -101,7 +72,6 @@ read_landuse_file <- function(path, label) {
   fcol <- names(df)[grepl("^floresta$|florest|forest", names(df))][1]
   if (is.na(fcol)) stop("Forest column not found in ", path)
 
-  # Convert all candidate land-use columns to numeric when possible.
   for (nm in setdiff(names(df), c(ycol, "year"))) {
     if (!is.numeric(df[[nm]])) {
       z <- suppressWarnings(as.numeric(gsub(",", ".", as.character(df[[nm]]))))
@@ -135,8 +105,7 @@ dat <- list(
   DSF   = read_landuse_file(arq_fed,   "Deciduous Seasonal Forest")
 )
 
-# Check raw-input geometry and percentages before statistical analysis.
-# The NA class remains included in PCA to reproduce the submitted version.
+## Verificação dos dados de entrada
 validate_input <- function(x, label) {
   stopifnot(nrow(x) == 38L, identical(as.integer(x$year), 1985:2022))
   classes <- x |>
@@ -153,9 +122,7 @@ validate_input <- function(x, label) {
 }
 invisible(purrr::imap(dat, validate_input))
 
-# ------------------------------------------------------------
-# 4. Trend analysis
-# ------------------------------------------------------------
+## Tendências temporais: OLS, HAC, DW, MK e Sen
 analyze_series <- function(df, label) {
   mod <- lm(forest ~ year, data = df)
   n <- nrow(df)
@@ -223,11 +190,7 @@ table1 <- purrr::map_dfr(ana, "summary") |>
   ) |>
   arrange(`Spatial unit`)
 
-# ------------------------------------------------------------
-# 5. REEC figure theme
-# ------------------------------------------------------------
-# Arial is normally available on Windows.
-# If Arial is unavailable on another computer, change base_family to "sans".
+## Elementos gráficos
 theme_reec <- theme_classic(base_family = "Arial", base_size = 9) +
   theme(
     axis.title = element_text(size = 9, color = "black"),
@@ -249,9 +212,7 @@ fmt_p <- function(p) {
   )
 }
 
-# ------------------------------------------------------------
-# 6. Figure 3 - forest-cover trajectories
-# ------------------------------------------------------------
+## Figura 3: cobertura florestal anual
 make_trend_panel <- function(obj, panel_label) {
   df <- obj$data
   s <- obj$summary
@@ -301,9 +262,7 @@ p3 <- (
   make_trend_panel(ana$DSF,   "(d) Deciduous Seasonal Forest")
 ) + patchwork::plot_layout(ncol = 2)
 
-# ------------------------------------------------------------
-# 7. Figure 4 - annual forest-cover change
-# ------------------------------------------------------------
+## Figura 4: variação anual da cobertura florestal
 make_change_panel <- function(obj, panel_label) {
   df <- obj$data |> filter(!is.na(annual_change))
 
@@ -336,10 +295,7 @@ p4 <- (
   make_change_panel(ana$DSF,   "(d) Deciduous Seasonal Forest")
 ) + patchwork::plot_layout(ncol = 2)
 
-# ------------------------------------------------------------
-# 8. PCA
-# ------------------------------------------------------------
-# American English labels used in Figure 5 and supplementary loadings.
+## PCA das classes de uso e cobertura
 translate_class <- c(
   agropecuaria = "Agricultural mosaic",
   apicum = "Salt flat",
@@ -361,14 +317,14 @@ translate_class <- c(
   silvicultura = "Silviculture"
 )
 
+## Ajuste da PCA padronizada
 run_pca <- function(df, unit_name) {
-  # Keep the original land-use percentages.
-  # Remove only the year aliases and the auxiliary 'forest' copy.
+  # "NA" e classes de baixa frequência são mantidas se houver variância.
+  # Trata-se de uma classe de origem, não de valores ausentes.
   x <- df |>
     select(-any_of(c("ano", "year", "forest"))) |>
     select(where(is.numeric))
 
-  # Remove variables with all missing values or zero variance.
   keep <- vapply(
     x,
     function(z) {
@@ -383,8 +339,7 @@ run_pca <- function(df, unit_name) {
     stop(unit_name, ": too few non-constant land-use variables for PCA.")
   }
 
-  # PCA requires complete values. With these source spreadsheets the annual
-  # percentages are expected to be complete; stop rather than silently impute.
+  # Valores NA do R (ausência de dado) são tratados separadamente.
   if (anyNA(x)) {
     bad <- names(x)[vapply(x, anyNA, logical(1))]
     stop(
@@ -403,10 +358,6 @@ run_pca <- function(df, unit_name) {
   load <- as.data.frame(pc$rotation[, 1:2, drop = FALSE])
   load$class <- rownames(load)
 
-  # PCA signs are arbitrary. Orient PC1 so the time trajectory runs,
-  # as far as possible, from earlier years on the left to later years
-  # on the right. This improves cross-panel visual interpretation
-  # without changing distances, variance, or relationships.
   early_pc1 <- mean(scores$PC1[scores$year <= 1990], na.rm = TRUE)
   late_pc1  <- mean(scores$PC1[scores$year >= 2017], na.rm = TRUE)
 
@@ -448,26 +399,11 @@ table2 <- tibble(
       `PC1 variance (%)` + `PC2 variance (%)`
   )
 
-# ------------------------------------------------------------
-# 9. FIGURE 5 - MULTIPANEL PCA FOR REEC
-# ------------------------------------------------------------
-# Design rationale:
-# 1) Four panels directly compare the basin with the three forest formations.
-# 2) All 38 years are shown as a connected temporal trajectory.
-# 3) A color-blind-friendly continuous scale represents time.
-# 4) Selected years are labeled to avoid excessive text.
-# 5) 1985 and 2022 receive distinct endpoint symbols, so the temporal
-#    direction remains interpretable even in grayscale.
-# 6) Only the strongest loading vectors are labeled in each panel.
-# 7) No figure title or caption is embedded in the artwork.
-
-# Years that provide temporal landmarks without overcrowding the panels.
 years_to_label <- c(1985, 1990, 2000, 2010, 2020, 2022)
 
-# Number of loading vectors displayed in each panel.
-# Four provides a good compromise between interpretation and legibility.
 n_loadings <- 4
 
+## Seleção dos vetores da PCA
 prepare_pca_panel <- function(pca_obj, n_vectors = 4) {
   scores <- pca_obj$scores
 
@@ -482,8 +418,6 @@ prepare_pca_panel <- function(pca_obj, n_vectors = 4) {
     ) |>
     slice_max(order_by = loading_norm, n = n_vectors, with_ties = FALSE)
 
-  # Scale loading arrows relative to each panel's score cloud.
-  # The factor is intentionally conservative to leave room for labels.
   pc1_span <- diff(range(scores$PC1, na.rm = TRUE))
   pc2_span <- diff(range(scores$PC2, na.rm = TRUE))
 
@@ -504,12 +438,12 @@ prepare_pca_panel <- function(pca_obj, n_vectors = 4) {
   list(scores = scores, load = load)
 }
 
+## Figura 5: ordenações temporais
 make_pca_panel <- function(pca_obj, panel_label, panel_name) {
   z <- prepare_pca_panel(pca_obj, n_vectors = n_loadings)
   scores <- z$scores
   load <- z$load
 
-  # Endpoint data are plotted separately for print/grayscale redundancy.
   endpoints <- scores |>
     filter(year %in% c(1985, 2022)) |>
     mutate(
@@ -521,7 +455,6 @@ make_pca_panel <- function(pca_obj, panel_label, panel_name) {
     )
 
   ggplot(scores, aes(PC1, PC2)) +
-    # Reference axes
     geom_hline(
       yintercept = 0, linetype = "dotted",
       linewidth = 0.32, color = "grey70"
@@ -531,7 +464,6 @@ make_pca_panel <- function(pca_obj, panel_label, panel_name) {
       linewidth = 0.32, color = "grey70"
     ) +
 
-    # Temporal trajectory: thin neutral line beneath the points
     geom_path(
       aes(group = 1),
       linewidth = 0.40,
@@ -539,14 +471,12 @@ make_pca_panel <- function(pca_obj, panel_label, panel_name) {
       alpha = 0.85
     ) +
 
-    # Annual scores
     geom_point(
       aes(color = year),
       size = 1.65,
       alpha = 0.92
     ) +
 
-    # Distinct first/last year markers preserve interpretation in grayscale
     geom_point(
       data = endpoints,
       mapping = aes(x = PC1, y = PC2, shape = endpoint),
@@ -557,7 +487,6 @@ make_pca_panel <- function(pca_obj, panel_label, panel_name) {
       color = "black"
     ) +
 
-    # Selected year labels
     ggrepel::geom_text_repel(
       data = subset(scores, year %in% years_to_label),
       aes(label = year),
@@ -574,7 +503,6 @@ make_pca_panel <- function(pca_obj, panel_label, panel_name) {
       show.legend = FALSE
     ) +
 
-    # Loading vectors
     geom_segment(
       data = load,
       aes(x = 0, y = 0, xend = xend, yend = yend),
@@ -587,7 +515,6 @@ make_pca_panel <- function(pca_obj, panel_label, panel_name) {
       color = "grey15"
     ) +
 
-    # Loading labels
     ggrepel::geom_text_repel(
       data = load,
       aes(x = xend, y = yend, label = label),
@@ -608,7 +535,6 @@ make_pca_panel <- function(pca_obj, panel_label, panel_name) {
       seed = 2026
     ) +
 
-    # Accessible sequential palette for time
     scale_color_viridis_c(
       option = "C",
       direction = 1,
@@ -682,7 +608,6 @@ p5d <- make_pca_panel(
   "Deciduous Seasonal Forest"
 )
 
-# Collect the common legends once, beneath the four panels.
 p5 <- (
   (p5a + p5b) /
   (p5c + p5d)
@@ -693,14 +618,7 @@ p5 <- (
     legend.box = "horizontal"
   )
 
-# ------------------------------------------------------------
-# 9.1. Audit of the first DSF annual-change observation
-# ------------------------------------------------------------
-# The first DSF annual-change value is visually large because the
-# denominator is the previous year's forest-cover percentage. It is
-# retained in Figure 4. This block prints the 1985 and 1986 source
-# values and independently recalculates the percentage change so the
-# analyst can verify the observation before submission.
+## Verificação da primeira variação anual em DSF
 dsf_1985_1986 <- ana$DSF$data |>
   filter(year %in% c(1985, 1986)) |>
   select(year, forest, annual_change)
@@ -720,20 +638,6 @@ if (all(c(1985, 1986) %in% dsf_1985_1986$year)) {
   )
 }
 
-# ------------------------------------------------------------
-# FINAL v5 publication note
-# ------------------------------------------------------------
-# Figure 4 data and scaling are intentionally unchanged from v4.
-# The large first DSF annual-change observation is retained and audited
-# from the source values. Figure 3 changes are typographic only.
-# Figure 5 changes affect label placement only; PCA scores, loadings,
-# explained variance, selected loading vectors, and temporal trajectory
-# are unchanged.
-#
-# ------------------------------------------------------------
-# 10. Export figures
-# ------------------------------------------------------------
-# Figure 3 and Figure 4: line-dominant artwork.
 ggsave(
   file.path(dir_out, "Fig3_ForestCover_Trends_REEC_v5_FINAL.tif"),
   p3, width = 174, height = 145, units = "mm",
@@ -772,9 +676,6 @@ try(
   silent = TRUE
 )
 
-# Figure 5: color + line artwork.
-# 174 x 165 mm gives each PCA panel enough space for labels while
-# remaining suitable for a two-column journal page.
 ggsave(
   file.path(dir_out, "Fig5_PCA_Multipanel_REEC_v5_FINAL.tif"),
   p5,
@@ -784,7 +685,6 @@ ggsave(
   bg = "white"
 )
 
-# Vector PDF is the preferred working/submission version when accepted.
 ggsave(
   file.path(dir_out, "Fig5_PCA_Multipanel_REEC_v5_FINAL.pdf"),
   p5,
@@ -793,8 +693,6 @@ ggsave(
   bg = "white"
 )
 
-# EPS vector copy. On some Windows installations cairo_ps may be
-# unavailable; the script continues and keeps TIFF/PDF if EPS fails.
 try(
   ggsave(
     file.path(dir_out, "Fig5_PCA_Multipanel_REEC_v5_FINAL.eps"),
@@ -806,8 +704,6 @@ try(
   silent = TRUE
 )
 
-# High-resolution PNG only for quick visual checking, not the primary
-# submission format.
 ggsave(
   file.path(dir_out, "Fig5_PCA_Multipanel_REEC_v5_FINAL_preview.png"),
   p5,
@@ -816,9 +712,7 @@ ggsave(
   bg = "white"
 )
 
-# ------------------------------------------------------------
-# 11. Export journal tables and PCA loadings
-# ------------------------------------------------------------
+## Exportação das tabelas e dos loadings
 table1_out <- table1 |>
   mutate(
     `beta (percentage points yr-1)` =
@@ -865,7 +759,6 @@ openxlsx::writeData(wb, "Table 1 Trends", table1_out)
 openxlsx::addWorksheet(wb, "Table 2 PCA")
 openxlsx::writeData(wb, "Table 2 PCA", table2_out)
 
-# Supplementary PCA loadings, including loading magnitude and rank.
 for (nm in c("Basin", "DOF", "SSF", "DSF")) {
   sh <- paste0("PCA loadings ", nm)
   openxlsx::addWorksheet(wb, sh)
@@ -918,9 +811,7 @@ openxlsx::saveWorkbook(
   overwrite = TRUE
 )
 
-# ------------------------------------------------------------
-# 12. Console validation report
-# ------------------------------------------------------------
+## Relatório de processamento
 cat("\n============================================================\n")
 cat("REEC Chapter 2 processing completed.\n")
 cat("Output folder:\n", normalizePath(dir_out), "\n\n", sep = "")
@@ -945,42 +836,7 @@ for (nm in c("Basin", "DOF", "SSF", "DSF")) {
   )
 }
 
-cat("\nFigure 5 files:\n")
-cat("  Fig5_PCA_Multipanel_REEC_v5_FINAL.tif  (600 dpi)\n")
-cat("  Fig5_PCA_Multipanel_REEC_v5_FINAL.pdf  (vector)\n")
-cat("  Fig5_PCA_Multipanel_REEC_v5_FINAL.eps  (vector, if Cairo EPS is available)\n")
-cat("  Fig5_PCA_Multipanel_REEC_v5_FINAL_preview.png (300 dpi preview)\n")
-
-cat("\nAbbreviations used in the manuscript:\n")
-cat("DOF = Dense Ombrophilous Forest\n")
-cat("SSF = Semideciduous Seasonal Forest\n")
-cat("DSF = Deciduous Seasonal Forest\n")
-
-cat("\nRecommended manuscript caption:\n")
-cat(
-  "Fig. 5 Principal component analysis of annual land-use and land-cover ",
-  "composition from 1985 to 2022 for (a) the Cachoeira River basin, ",
-  "(b) Dense Ombrophilous Forest, (c) Semideciduous Seasonal Forest, ",
-  "and (d) Deciduous Seasonal Forest. Points represent individual years, ",
-  "gray lines connect consecutive years, and arrows show the four land-use ",
-  "and land-cover classes with the largest loading magnitudes in each ",
-  "ordination. PC1 and PC2 percentages indicate the variance explained ",
-  "within each spatial unit.\n",
-  sep = ""
-)
-
-cat("\nFINAL v5 editorial checks:\n")
-cat("  - Fig. 3 statistics are separated from panel titles and use plotmath.\n")
-cat("  - Fig. 5 has final loading-label spacing and stronger repulsion.\n")
-cat("  - DSF 1985-1986 annual change is audited above and not removed.\n")
-cat("  - Inspect the PDF/vector files at 100% before submission.\n\n")
-cat("============================================================\n")
-
-# ------------------------------------------------------------
-# 13. Audit trail / session details
-# ------------------------------------------------------------
 writeLines(capture.output(sessionInfo()), file.path(dir_out, "sessionInfo.txt"))
 writeLines(capture.output(tools::md5sum(c(arq_bacia, arq_fod, arq_fes, arq_fed))),
            file.path(dir_out, "input_md5.txt"))
 cat("Reproducibility audit written to outputs/sessionInfo.txt and outputs/input_md5.txt\n")
-cat("NEXT: Rscript scripts/02_validate_against_article.R\n")
